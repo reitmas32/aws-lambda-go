@@ -1,0 +1,25 @@
+FROM amazonlinux:2 as builder
+
+# Instala utilidades necesarias y descarga Go 1.24.2
+RUN yum -y install tar gzip curl git && \
+    curl -LO https://go.dev/dl/go1.24.2.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go1.24.2.linux-amd64.tar.gz
+
+# Configura el entorno
+ENV PATH="/usr/local/go/bin:${PATH}"
+ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+
+WORKDIR /app
+COPY . .
+
+# Verifica versión
+RUN go version
+
+# Compila el binario
+RUN go build -ldflags="-s -w" -o app cmd/main.go
+
+# Etapa final: imagen de Lambda
+FROM public.ecr.aws/lambda/go:1
+
+COPY --from=builder /app/app ${LAMBDA_TASK_ROOT}
+CMD [ "app" ]
