@@ -1,0 +1,36 @@
+
+# Etapa 1: Compilación
+FROM golang:1.24-alpine AS builder
+
+# Variables de entorno para Go
+ENV CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64
+
+WORKDIR /app
+
+# Instala dependencias necesarias
+RUN apk add --no-cache git
+
+# Copia los archivos del proyecto
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+# Compila el binario de la aplicación
+RUN go build -o /app/main ./cmd/main.go
+
+# Etapa 2: Ejecución
+FROM alpine:latest
+
+WORKDIR /root/
+
+# Copia el binario desde la etapa de compilación
+COPY --from=builder /app/main .
+
+# Especifica el puerto en el que escucha la app (si es necesario)
+EXPOSE 8080
+
+# Ejecuta la aplicación
+CMD ["./main"]
